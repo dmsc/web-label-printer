@@ -1,12 +1,17 @@
 <script lang="ts">
+  type CanvasContext =
+    | CanvasRenderingContext2D
+    | OffscreenCanvasRenderingContext2D;
+
   // Width and height in 0.125 mm units
   let label_width = $state(40 * 8);
   let label_height = $state(12 * 8);
   let margin = $state(1 * 8);
   let text = $state("");
   let canvas: HTMLCanvasElement | undefined = $state();
+  let pixelData = new Uint8Array();
 
-  function sizeLine(ctx: CanvasRenderingContext2D, str: string) {
+  function sizeLine(ctx: CanvasContext, str: string) {
     var m = ctx.measureText(str);
     //    var hg = m.fontBoundingBoxAscent + m.fontBoundingBoxDescent;
     var hg = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
@@ -14,11 +19,7 @@
     return { wd, hg };
   }
 
-  function fullSize(
-    ctx: CanvasRenderingContext2D,
-    lines: string[],
-    sz: number,
-  ) {
+  function fullSize(ctx: CanvasContext, lines: string[], sz: number) {
     ctx.font = sz.toString() + "px sans";
     var wd = 0;
     var hg = 0;
@@ -31,7 +32,7 @@
   }
 
   function bestSize(
-    ctx: CanvasRenderingContext2D,
+    ctx: CanvasContext,
     lines: string[],
     min_size = 8,
     max_size = 96,
@@ -51,13 +52,9 @@
     return min_size;
   }
 
-  function drawCanvas(text: string) {
-    if (!canvas) return;
-    var ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    ctx.fillStyle = "#eee";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  function drawText(ctx: CanvasContext, text: string) {
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, label_width, label_height);
 
     // Draw text lines:
     var lines = text.split("\n");
@@ -71,18 +68,102 @@
     for (var line of lines) {
       var m = ctx.measureText(line);
       var y =
-        canvas.height / 2 +
+        label_height / 2 +
         m.actualBoundingBoxAscent / 2 +
         line_height * (ln - (lines.length - 1) / 2);
       var w = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
-      var x = (canvas.width - w) / 2 + m.actualBoundingBoxLeft;
+      var x = (label_width - w) / 2 + m.actualBoundingBoxLeft;
       ctx.fillText(line, x, y);
       ln++;
     }
   }
 
+  function convertToData(ctx: CanvasContext) {
+    // Get image data
+    const imageData = ctx.getImageData(0, 0, label_width, label_height);
+
+    // Dither pattern
+    const dither = (x: number, y: number) => {
+      const pattern = [
+        [24, 406, 120, 502],
+        [598, 215, 693, 311],
+        [167, 550, 72, 454],
+        [741, 359, 645, 263],
+      ];
+      const val =
+        imageData.data[4 * (x + y * label_width)] + // red
+        imageData.data[4 * (x + y * label_width) + 1] + // green
+        imageData.data[4 * (x + y * label_width) + 2]; // blue
+      return val > pattern[x % 4][y % 4] ? 0 : 1;
+    };
+
+    // Dither to binary image data, in the printer format
+    const rows = Math.floor((label_height + 7) / 8);
+    const pixels = new Uint8Array(rows * label_width);
+    for (let x = 0, pos = 0; x < label_width; x++) {
+      for (let y = 0; y < label_height; y += 8) {
+        const val =
+          dither(x, y) * 128 +
+          dither(x, y + 1) * 64 +
+          dither(x, y + 2) * 32 +
+          dither(x, y + 3) * 16 +
+          dither(x, y + 4) * 8 +
+          dither(x, y + 5) * 4 +
+          dither(x, y + 6) * 2 +
+          dither(x, y + 7);
+        pixels[pos] = val;
+        pos++;
+      }
+    }
+
+    return pixels;
+  }
+
+  function draw() {
+    if (!canvas) return;
+
+    const offscreenCanvas = new OffscreenCanvas(label_width, label_height);
+    const off_ctx = offscreenCanvas.getContext("2d");
+    if (!off_ctx) return;
+
+    drawText(off_ctx, text);
+    pixelData = convertToData(off_ctx);
+
+    // Convert back to image data for preview
+    const img = new ImageData(label_width, label_height);
+
+    const setPix = (x: number, y: number, v: number) => {
+      const p = v ? 0 : 255;
+      img.data[(x + y * label_width) * 4 + 0] = p;
+      img.data[(x + y * label_width) * 4 + 1] = p;
+      img.data[(x + y * label_width) * 4 + 2] = p;
+      img.data[(x + y * label_width) * 4 + 3] = 255;
+    };
+
+    for (let x = 0, pos = 0; x < label_width; x++) {
+      for (let y = 0; y < label_height; y += 8) {
+        const val = pixelData[pos];
+        setPix(x, y + 0, val & 128);
+        setPix(x, y + 1, val & 64);
+        setPix(x, y + 2, val & 32);
+        setPix(x, y + 3, val & 16);
+        setPix(x, y + 4, val & 8);
+        setPix(x, y + 5, val & 4);
+        setPix(x, y + 6, val & 2);
+        setPix(x, y + 7, val & 1);
+        pos++;
+      }
+    }
+
+    // Copy to preview canvas
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    ctx.putImageData(img, 0, 0);
+  }
+
   $effect(() => {
-    drawCanvas(text);
+    draw();
   });
 </script>
 
