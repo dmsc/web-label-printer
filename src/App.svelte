@@ -3,16 +3,32 @@
     | CanvasRenderingContext2D
     | OffscreenCanvasRenderingContext2D;
 
-  // Dimensions in mm
-  let label_width_mm = $state(40);
-  let label_height_mm = $state(12);
-  let margin_mm = $state(1);
+  // Dimensions in mm (loaded from localStorage)
+  let label_width_mm = $state(
+    parseFloat(localStorage.getItem("label_width_mm") || "40"),
+  );
+  let label_height_mm = $state(
+    parseFloat(localStorage.getItem("label_height_mm") || "12"),
+  );
+  let margin_mm = $state(parseFloat(localStorage.getItem("margin_mm") || "1"));
 
   // Width and height in 0.125 mm units (derived, rounded to integers)
   let label_width = $derived(Math.round(label_width_mm * 8));
   let label_height = $derived(Math.round(label_height_mm * 8));
   let margin = $derived(Math.round(margin_mm * 8));
-  let text = $state("");
+  let text = $state(sessionStorage.getItem("text") || "");
+
+  // Save to localStorage
+  $effect(() => {
+    localStorage.setItem("label_width_mm", label_width_mm.toString());
+    localStorage.setItem("label_height_mm", label_height_mm.toString());
+    localStorage.setItem("margin_mm", margin_mm.toString());
+  });
+
+  // Save text to sessionStorage
+  $effect(() => {
+    sessionStorage.setItem("text", text);
+  });
   let canvas: HTMLCanvasElement | undefined = $state();
   let pixelData = new Uint8Array();
 
