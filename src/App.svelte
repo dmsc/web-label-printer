@@ -222,9 +222,9 @@
       for (let i = 0; i < pixelData.length; i += 128) {
         const buf = pixelData.slice(i, i + 128);
         // TODO: last packet should be padded??
-        await characteristic?.writeValue(buf);
+        await characteristic?.writeValueWithoutResponse(buf);
       }
-      await characteristic?.writeValue(footer);
+      await characteristic?.writeValueWithResponse(footer);
     } catch (err) {
       console.log(`Error printing: ${err}`);
     }
