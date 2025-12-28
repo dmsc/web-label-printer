@@ -3,10 +3,15 @@
     | CanvasRenderingContext2D
     | OffscreenCanvasRenderingContext2D;
 
-  // Width and height in 0.125 mm units
-  let label_width = $state(40 * 8);
-  let label_height = $state(12 * 8);
-  let margin = $state(1 * 8);
+  // Dimensions in mm
+  let label_width_mm = $state(40);
+  let label_height_mm = $state(12);
+  let margin_mm = $state(1);
+
+  // Width and height in 0.125 mm units (derived, rounded to integers)
+  let label_width = $derived(Math.round(label_width_mm * 8));
+  let label_height = $derived(Math.round(label_height_mm * 8));
+  let margin = $derived(Math.round(margin_mm * 8));
   let text = $state("");
   let canvas: HTMLCanvasElement | undefined = $state();
   let pixelData = new Uint8Array();
@@ -171,6 +176,20 @@
   <h1>Web Label Printer</h1>
   <div class="r">
     <textarea bind:value={text} placeholder="Write text here..."></textarea>
+    <details>
+      <summary>⚙️ Configuration</summary>
+      <div class="config">
+        <label>
+          Label Width (mm): <input type="number" bind:value={label_width_mm} min="1" max="100" step="0.1" />
+        </label>
+        <label>
+          Label Height (mm): <input type="number" bind:value={label_height_mm} min="1" max="100" step="0.1" />
+        </label>
+        <label>
+          Margin (mm): <input type="number" bind:value={margin_mm} min="0" max="10" step="0.1" />
+        </label>
+      </div>
+    </details>
     <button>Print Label</button>
     <div class="l">
       <canvas bind:this={canvas} width={label_width} height={label_height}>
@@ -244,5 +263,31 @@
   }
   button:hover {
     background-color: #ccc;
+  }
+  details {
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .config {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5em;
+    padding: 1em;
+    border: 2px solid #ddd;
+    border-radius: 12px;
+    background-color: #f9f9f9;
+  }
+  .config label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 500;
+  }
+  .config input {
+    width: 80px;
+    padding: 0.3em;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    text-align: center;
   }
 </style>
