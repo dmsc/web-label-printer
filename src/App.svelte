@@ -196,13 +196,31 @@
       <summary>⚙️ Configuration</summary>
       <div class="config">
         <label>
-          Label Width (mm): <input type="number" bind:value={label_width_mm} min="1" max="100" step="0.1" />
+          Label Width (mm): <input
+            type="number"
+            bind:value={label_width_mm}
+            min="1"
+            max="100"
+            step="0.1"
+          />
         </label>
         <label>
-          Label Height (mm): <input type="number" bind:value={label_height_mm} min="1" max="100" step="0.1" />
+          Label Height (mm): <input
+            type="number"
+            bind:value={label_height_mm}
+            min="1"
+            max="100"
+            step="0.1"
+          />
         </label>
         <label>
-          Margin (mm): <input type="number" bind:value={margin_mm} min="0" max="10" step="0.1" />
+          Margin (mm): <input
+            type="number"
+            bind:value={margin_mm}
+            min="0"
+            max="10"
+            step="0.1"
+          />
         </label>
       </div>
     </details>
@@ -210,7 +228,13 @@
     <div class="l">
       <canvas bind:this={canvas} width={label_width} height={label_height}>
       </canvas>
-      <span>Label size: {(label_width * 0.125).toFixed(1)} × {(label_height * 0.125).toFixed(1)} mm</span>
+      <span>
+        Label size:
+        {(label_width * 0.125).toFixed(1)}
+        ×
+        {(label_height * 0.125).toFixed(1)}
+        mm
+      </span>
       <span>Margin: {(margin * 0.125).toFixed(1)} mm</span>
     </div>
   </div>
