@@ -111,10 +111,11 @@
         [167, 550, 72, 454],
         [741, 359, 645, 263],
       ];
+      const p = label_width - x - 1 + y * label_width;
       const val =
-        imageData.data[4 * (x + y * label_width)] + // red
-        imageData.data[4 * (x + y * label_width) + 1] + // green
-        imageData.data[4 * (x + y * label_width) + 2]; // blue
+        imageData.data[4 * p + 0] + // red
+        imageData.data[4 * p + 1] + // green
+        imageData.data[4 * p + 2]; // blue
       return val > pattern[x % 4][y % 4] ? 0 : 1;
     };
 
@@ -155,10 +156,11 @@
 
     const setPix = (x: number, y: number, v: number) => {
       const p = v ? 0 : 255;
-      img.data[(x + y * label_width) * 4 + 0] = p;
-      img.data[(x + y * label_width) * 4 + 1] = p;
-      img.data[(x + y * label_width) * 4 + 2] = p;
-      img.data[(x + y * label_width) * 4 + 3] = 255;
+      const t = label_width - 1 - x + y * label_width;
+      img.data[t * 4 + 0] = p;
+      img.data[t * 4 + 1] = p;
+      img.data[t * 4 + 2] = p;
+      img.data[t * 4 + 3] = 255;
     };
 
     for (let x = 0, pos = 0; x < label_width; x++) {
@@ -186,6 +188,48 @@
   $effect(() => {
     draw();
   });
+
+  async function printLabel() {
+    try {
+      const device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: ["0000ff00-0000-1000-8000-00805f9b34fb"],
+      });
+      const server = await device.gatt?.connect();
+      const service = await server?.getPrimaryService(
+        "0000ff00-0000-1000-8000-00805f9b34fb",
+      );
+      const characteristic = await service?.getCharacteristic(
+        "0000ff02-0000-1000-8000-00805f9b34fb",
+      );
+
+      // Ok, will print our data
+      const bytes_height = Math.floor((label_height + 7) / 8);
+      const header = new Uint8Array([
+        0x1b,
+        0x40,
+        0x1d,
+        0x76,
+        0x30,
+        0x00,
+        bytes_height % 256,
+        Math.floor(bytes_height / 256),
+        label_width % 256,
+        Math.floor(label_width / 256),
+      ]);
+      const footer = new Uint8Array([0x1b, 0x64, 0x00]);
+
+      await characteristic?.writeValueWithResponse(header);
+      for (let i = 0; i < pixelData.length; i += 128) {
+        const buf = pixelData.slice(i, i + 128);
+        // TODO: last packet should be padded??
+        await characteristic?.writeValue(buf);
+      }
+      await characteristic?.writeValue(footer);
+    } catch (err) {
+      console.log(`Error printing: ${err}`);
+    }
+  }
 </script>
 
 <main>
@@ -224,7 +268,7 @@
         </label>
       </div>
     </details>
-    <button>Print Label</button>
+    <button onclick={printLabel}>Print Label</button>
     <div class="l">
       <canvas bind:this={canvas} width={label_width} height={label_height}>
       </canvas>

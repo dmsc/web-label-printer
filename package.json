@@ -20,5 +20,8 @@
   },
   "overrides": {
     "vite": "npm:rolldown-vite@7.2.5"
+  },
+  "dependencies": {
+    "@types/web-bluetooth": "^0.0.21"
   }
 }
