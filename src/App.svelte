@@ -10,19 +10,26 @@
   let label_height_mm = $state(
     parseFloat(localStorage.getItem("label_height_mm") || "12"),
   );
-  let margin_mm = $state(parseFloat(localStorage.getItem("margin_mm") || "1"));
+  let margin_height_mm = $state(
+    parseFloat(localStorage.getItem("margin_height_mm") || "1"),
+  );
+  let margin_width_mm = $state(
+    parseFloat(localStorage.getItem("margin_mm") || "1"),
+  );
 
   // Width and height in 0.125 mm units (derived, rounded to integers)
   let label_width = $derived(Math.round(label_width_mm * 8));
   let label_height = $derived(Math.round(label_height_mm * 8));
-  let margin = $derived(Math.round(margin_mm * 8));
+  let margin_x = $derived(Math.round(margin_width_mm * 8));
+  let margin_y = $derived(Math.round(margin_height_mm * 8));
   let text = $state(sessionStorage.getItem("text") || "");
 
   // Save to localStorage
   $effect(() => {
     localStorage.setItem("label_width_mm", label_width_mm.toString());
     localStorage.setItem("label_height_mm", label_height_mm.toString());
-    localStorage.setItem("margin_mm", margin_mm.toString());
+    localStorage.setItem("margin_mm", margin_width_mm.toString());
+    localStorage.setItem("margin_height_mm", margin_height_mm.toString());
   });
 
   // Save text to sessionStorage
@@ -32,24 +39,21 @@
   let canvas: HTMLCanvasElement | undefined = $state();
   let pixelData = new Uint8Array();
 
-  function sizeLine(ctx: CanvasContext, str: string) {
-    var m = ctx.measureText(str);
-    //    var hg = m.fontBoundingBoxAscent + m.fontBoundingBoxDescent;
-    var hg = m.actualBoundingBoxAscent + m.actualBoundingBoxDescent;
-    var wd = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
-    return { wd, hg };
-  }
-
   function fullSize(ctx: CanvasContext, lines: string[], sz: number) {
     ctx.font = sz.toString() + "px sans";
+    const line_hg = Math.round((sz * 7) / 6);
     var wd = 0;
-    var hg = 0;
-    for (var line of lines) {
-      var s = sizeLine(ctx, line);
-      hg = Math.max(hg, s.hg);
-      wd = Math.max(wd, s.wd);
+    var total_hg = 0;
+    // Get all lines
+    for (var i = 0; i < lines.length; i++) {
+      const m = ctx.measureText(lines[i]);
+      wd = Math.max(wd, m.actualBoundingBoxLeft + m.actualBoundingBoxRight);
+      total_hg += i == 0 ? m.actualBoundingBoxAscent : line_hg;
+      if (i == lines.length - 1) {
+        total_hg += m.actualBoundingBoxDescent;
+      }
     }
-    return { wd, hg, total_hg: (1.05 * hg + 2) * lines.length - hg * 0.05 - 2 };
+    return { wd, line_hg, total_hg };
   }
 
   function bestSize(
@@ -58,8 +62,8 @@
     min_size = 8,
     max_size = 144,
   ) {
-    var wd = ctx.canvas.width - margin * 2;
-    var hg = ctx.canvas.height - margin * 2;
+    var wd = ctx.canvas.width - margin_x * 2;
+    var hg = ctx.canvas.height - margin_y * 2;
 
     while (min_size + 0.1 < max_size) {
       var size = (min_size + max_size) / 2;
@@ -78,24 +82,20 @@
     ctx.fillRect(0, 0, label_width, label_height);
 
     // Draw text lines:
-    var lines = text.split("\n");
-    var sz = bestSize(ctx, lines);
-    var font_sz = fullSize(ctx, lines, sz);
-    var line_height = font_sz.hg * 1.05 + 2;
+    const lines = text.split("\n");
+    const sz = bestSize(ctx, lines);
+    const font_sz = fullSize(ctx, lines, sz);
 
     ctx.textBaseline = "alphabetic";
     ctx.fillStyle = "#000";
-    var ln = 0;
-    for (var line of lines) {
-      var m = ctx.measureText(line);
-      var y =
-        label_height / 2 +
-        m.actualBoundingBoxAscent / 2 +
-        line_height * (ln - (lines.length - 1) / 2);
-      var w = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
-      var x = (label_width - w) / 2 + m.actualBoundingBoxLeft;
+    var y = (label_height - font_sz.total_hg) / 2;
+    for (var i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const m = ctx.measureText(line);
+      const w = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
+      const x = (label_width - w) / 2 + m.actualBoundingBoxLeft;
+      y += i ? font_sz.line_hg : m.actualBoundingBoxAscent;
       ctx.fillText(line, x, y);
-      ln++;
     }
   }
 
@@ -243,7 +243,7 @@
             type="number"
             bind:value={label_width_mm}
             min="1"
-            max="100"
+            max="150"
             step="0.1"
           />
         </label>
@@ -252,14 +252,23 @@
             type="number"
             bind:value={label_height_mm}
             min="1"
-            max="100"
+            max="18"
             step="0.1"
           />
         </label>
         <label>
-          Margin (mm): <input
+          Margin Width (mm): <input
             type="number"
-            bind:value={margin_mm}
+            bind:value={margin_width_mm}
+            min="0"
+            max="10"
+            step="0.1"
+          />
+        </label>
+        <label>
+          Margin Height (mm): <input
+            type="number"
+            bind:value={margin_height_mm}
             min="0"
             max="10"
             step="0.1"
@@ -278,7 +287,13 @@
         {(label_height * 0.125).toFixed(1)}
         mm
       </span>
-      <span>Margin: {(margin * 0.125).toFixed(1)} mm</span>
+      <span>
+        Margin:
+        {(margin_x * 0.125).toFixed(1)}
+        ×
+        {(margin_y * 0.125).toFixed(1)}
+        mm
+      </span>
     </div>
   </div>
 </main>
