@@ -192,8 +192,7 @@
   async function printLabel() {
     try {
       const device = await navigator.bluetooth.requestDevice({
-        acceptAllDevices: true,
-        optionalServices: ["0000ff00-0000-1000-8000-00805f9b34fb"],
+        filters: [{ services: ["0000ff00-0000-1000-8000-00805f9b34fb"] }],
       });
       const server = await device.gatt?.connect();
       const service = await server?.getPrimaryService(
