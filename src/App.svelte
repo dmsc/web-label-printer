@@ -40,7 +40,7 @@
     ctx: CanvasContext,
     lines: string[],
     min_size = 8,
-    max_size = 96,
+    max_size = 144,
   ) {
     var wd = ctx.canvas.width - margin * 2;
     var hg = ctx.canvas.height - margin * 2;
@@ -194,8 +194,8 @@
     <div class="l">
       <canvas bind:this={canvas} width={label_width} height={label_height}>
       </canvas>
-      <span>Label size: {label_width * 0.125} × {label_height * 0.125} mm</span>
-      <span>Margin: {margin * 0.125} mm</span>
+      <span>Label size: {(label_width * 0.125).toFixed(1)} × {(label_height * 0.125).toFixed(1)} mm</span>
+      <span>Margin: {(margin * 0.125).toFixed(1)} mm</span>
     </div>
   </div>
 </main>
