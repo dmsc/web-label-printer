@@ -39,18 +39,163 @@
   let canvas: HTMLCanvasElement | undefined = $state();
   let pixelData = new Uint8Array();
 
+  function renderLine(
+    ctx: CanvasContext,
+    line: string,
+    size: number,
+    render_fn: (str: string) => void,
+  ) {
+    // Split line into components:
+    const match_bold = /\*[^ *]([^*]*?[^* ]\*|\*)/g;
+    const match_italic = /_[^ _]([^_]*?[^_ ]_|_)/g;
+    const match_barcode = /\[\|.*?\|\]/g;
+    const match_big = /\^\^.*?\^\^/g;
+    const match_small = /__.*?__/g;
+
+    const parsed = [];
+
+    // Start by matching "barcode" tags to avoid matching inside
+    var clean_line = line;
+    for (const m of clean_line.matchAll(match_barcode)) {
+      // Add to parsed array
+      const start = m.index;
+      const end = m.index + m[0].length;
+      parsed.push({ pos: start, type: "barcode" });
+      parsed.push({ pos: end - 2, type: "barcode end" });
+      clean_line =
+        clean_line.substring(0, start) +
+        "\n".repeat(m[0].length) +
+        clean_line.substring(end);
+    }
+
+    // Now, add all matches
+    const add = (type: string, regex: RegExp, ln: number) => {
+      for (const m of clean_line.matchAll(regex)) {
+        const start = m.index;
+        const end = m.index + m[0].length;
+        parsed.push({ pos: start, type });
+        parsed.push({ pos: end - ln, type: type + " end" });
+      }
+    };
+
+    add("big", match_big, 2);
+    add("small", match_small, 2);
+    add("bold", match_bold, 1);
+    add("italic", match_italic, 1);
+
+    // Add a last tag at string end
+    parsed.push({ pos: line.length, type: "" });
+
+    // Sort tags
+    const tags = parsed.sort((a, b) => a.pos - b.pos);
+
+    // Now, process the line keeping the state of the font
+    var pos = 0;
+    var current_font = { size, name: "sans", italic: false, bold: false };
+    const font_stack: (typeof current_font)[] = [];
+    const make_font = (f: typeof current_font) => {
+      if (f.name.search(" "))
+        return `${f.italic ? "italic" : ""} ${f.bold ? "bold" : ""} ${f.size}px "${f.name}"`;
+      else
+        return `${f.italic ? "italic" : ""} ${f.bold ? "bold" : ""} ${f.size}px ${f.name}`;
+    };
+    for (const tag of tags) {
+      if (tag.pos > pos) {
+        // Add current string
+        ctx.font = make_font(current_font);
+        render_fn(line.substring(pos, tag.pos));
+      }
+      // Modify font
+      switch (tag.type) {
+        case "bold":
+          current_font.bold = true;
+          pos = tag.pos + 1;
+          break;
+        case "italic":
+          current_font.italic = true;
+          pos = tag.pos + 1;
+          break;
+        case "big":
+          current_font.size *= 5.0 / 4.0;
+          pos = tag.pos + 2;
+          break;
+        case "small":
+          current_font.size *= 4.0 / 5.0;
+          pos = tag.pos + 2;
+          break;
+        case "bold end":
+          current_font.bold = false;
+          pos = tag.pos + 1;
+          break;
+        case "italic end":
+          current_font.italic = false;
+          pos = tag.pos + 1;
+          break;
+        case "big end":
+          current_font.size *= 4.0 / 5.0;
+          pos = tag.pos + 2;
+          break;
+        case "small end":
+          current_font.size *= 5.0 / 4.0;
+          pos = tag.pos + 2;
+          break;
+        case "barcode":
+          font_stack.push(current_font);
+          current_font.bold = current_font.italic = false;
+          current_font.name = "Libre Barcode 39";
+          pos = tag.pos + 2;
+          break;
+        case "barcode end":
+          const s = font_stack.pop();
+          if (s) current_font = s;
+          pos = tag.pos + 2;
+          break;
+      }
+    }
+  }
+
+  function measureLine(ctx: CanvasContext, line: string, size: number) {
+    // To properly measure, we need to return:
+    //  - Right as the first actualBoundingBoxRight;
+    //  - Left as the sum of all the widths minus the last width and plus the last actualBoundingBoxLeft.
+
+    var first = true;
+    var right = 0;
+    var left = 0;
+    var ascent = 0;
+    var descent = 0;
+    var m: TextMetrics | undefined;
+    renderLine(ctx, line, size, (str) => {
+      m = ctx.measureText(str);
+      if (first) {
+        ascent = m.actualBoundingBoxAscent;
+        descent = m.actualBoundingBoxDescent;
+        left = m.actualBoundingBoxLeft;
+        right = m.width;
+        first = false;
+      } else {
+        ascent = Math.max(ascent, m.actualBoundingBoxAscent);
+        descent = Math.max(descent, m.actualBoundingBoxDescent);
+        right += m.width;
+      }
+    });
+    if (m !== undefined) {
+      right += m.actualBoundingBoxRight - m.width;
+    }
+    return { right, left, ascent, descent };
+  }
+
   function fullSize(ctx: CanvasContext, lines: string[], sz: number) {
-    ctx.font = sz.toString() + "px sans";
     const line_hg = Math.round((sz * 7) / 6);
     var wd = 0;
     var total_hg = 0;
     // Get all lines
     for (var i = 0; i < lines.length; i++) {
-      const m = ctx.measureText(lines[i]);
-      wd = Math.max(wd, m.actualBoundingBoxLeft + m.actualBoundingBoxRight);
-      total_hg += i == 0 ? m.actualBoundingBoxAscent : line_hg;
+      const m = measureLine(ctx, lines[i], sz);
+      wd = Math.max(wd, m.right + m.left);
+      total_hg += i == 0 ? m.ascent : line_hg;
       if (i == lines.length - 1) {
-        total_hg += m.actualBoundingBoxDescent;
+        total_hg += m.descent;
       }
     }
     return { wd, line_hg, total_hg };
@@ -91,11 +236,19 @@
     var y = (label_height - font_sz.total_hg) / 2;
     for (var i = 0; i < lines.length; i++) {
       const line = lines[i];
-      const m = ctx.measureText(line);
-      const w = m.actualBoundingBoxLeft + m.actualBoundingBoxRight;
-      const x = (label_width - w) / 2 + m.actualBoundingBoxLeft;
-      y += i ? font_sz.line_hg : m.actualBoundingBoxAscent;
-      ctx.fillText(line, x, y);
+
+      // We have to render twice, once to measure, another to draw
+      const m = measureLine(ctx, line, sz);
+
+      const line_wd = m.right + m.left;
+      var x = (label_width - line_wd) / 2 + m.left;
+      y += i ? font_sz.line_hg : m.ascent;
+
+      renderLine(ctx, lines[i], sz, (str) => {
+        const m = ctx.measureText(str);
+        ctx.fillText(str, x, y);
+        x += m.width;
+      });
     }
   }
 

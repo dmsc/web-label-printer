@@ -23,3 +23,9 @@ body {
   margin: 0 auto;
   padding: 0 2rem;
 }
+
+/* BARCODE font */
+@font-face {
+  font-family: 'Libre Barcode 39';
+  src: url('fonts/LibreBarcode39Text-Regular.ttf') format('truetype');
+}
