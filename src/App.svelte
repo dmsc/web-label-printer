@@ -371,18 +371,21 @@
 
       // Ok, will print our data
       const bytes_height = Math.floor((label_height + 7) / 8);
+      // ESC/POS reference:
+      //   https://download4.epson.biz/sec_pubs/pos/reference_en/escpos/commands.html
       const header = new Uint8Array([
-        0x1b,
+        0x1b, // ESC @ : initialize printer
         0x40,
-        0x1d,
+        0x1d, // GS v 0 : Print raster image
         0x76,
         0x30,
-        0x00,
-        bytes_height % 256,
+        0x00, // normal image
+        bytes_height % 256, // bytes in horizontal direction
         Math.floor(bytes_height / 256),
-        label_width % 256,
+        label_width % 256, // lines in vertical direction
         Math.floor(label_width / 256),
       ]);
+      // ESC d 00 : Print and feed 0 lines.
       const footer = new Uint8Array([0x1b, 0x64, 0x00]);
 
       await characteristic?.writeValueWithResponse(header);
