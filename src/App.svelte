@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { onMount } from "svelte";
+
   type CanvasContext =
     | CanvasRenderingContext2D
     | OffscreenCanvasRenderingContext2D;
@@ -340,6 +342,18 @@
 
   $effect(() => {
     draw();
+  });
+
+  onMount(() => {
+    // Force loading of font at start, so we don't need to include in the HTML
+    const barcode_font = new FontFace(
+      "Libre Barcode 39",
+      "url('fonts/LibreBarcode39Text-Regular.ttf')",
+    );
+    document.fonts.add(barcode_font);
+    barcode_font.load().then(() => {
+      draw();
+    });
   });
 
   async function printLabel() {
