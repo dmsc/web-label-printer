@@ -48,8 +48,8 @@
     render_fn: (str: string) => void,
   ) {
     // Split line into components:
-    const match_bold = /\*[^ *]([^*]*?[^* ]\*|\*)/g;
-    const match_italic = /_[^ _]([^_]*?[^_ ]_|_)/g;
+    const match_bold = /(?<!\*)\*(?! )([^*]*?[^* ]\*)/g;
+    const match_italic = /(?<!_)_(?! )([^_]*?[^_ ]_)/g;
     const match_barcode = /\[\|.*?\|\]/g;
     const match_big = /\^\^.*?\^\^/g;
     const match_small = /__.*?__/g;
