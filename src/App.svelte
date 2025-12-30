@@ -413,22 +413,22 @@
     textarea.focus();
   }
 
-  async function setAttribute(attr: string) {
+  async function setAttribute(attr1: string, attr2 = attr1) {
     if (!textarea) return;
     let pos0 = textarea.selectionStart ?? 0;
     let pos1 = textarea.selectionEnd ?? 0;
     const sel = text.substring(pos0, pos1);
 
     // Check if selection already has attribute
-    if (sel.startsWith(attr) && sel.endsWith(attr)) {
+    if (sel.startsWith(attr1) && sel.endsWith(attr2)) {
       text =
         text.substring(0, pos0) +
-        sel.substring(1, sel.length - 1) +
+        sel.substring(attr1.length, sel.length - attr2.length) +
         text.substring(pos1);
-      pos1 = pos1 - 2 * attr.length;
+      pos1 = pos1 - attr1.length - attr2.length;
     } else {
-      text = text.substring(0, pos0) + attr + sel + attr + text.substring(pos1);
-      pos1 = pos1 + 2 * attr.length;
+      text = text.substring(0, pos0) + attr1 + sel + attr2 + text.substring(pos1);
+      pos1 = pos1 + attr1.length + attr2.length;
     }
     await settled();
     textarea.setSelectionRange(pos0, pos1);
@@ -450,6 +450,12 @@
         onclick={() => setAttribute("_")}
         class="italic"
         aria-label="Italic Text"
+      >
+      </button>
+      <button
+        onclick={() => setAttribute("[|", "|]")}
+        class="barcode"
+        aria-label="Barcode"
       >
       </button>
       <button
@@ -650,6 +656,10 @@
   }
   .smile {
     background: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLXNtaWxlLWljb24gbHVjaWRlLXNtaWxlIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIvPjxwYXRoIGQ9Ik04IDE0czEuNSAyIDQgMiA0LTIgNC0yIi8+PGxpbmUgeDE9IjkiIHgyPSI5LjAxIiB5MT0iOSIgeTI9IjkiLz48bGluZSB4MT0iMTUiIHgyPSIxNS4wMSIgeTE9IjkiIHkyPSI5Ii8+PC9zdmc+")
+      no-repeat;
+  }
+  .barcode {
+    background: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWJhcmNvZGUtaWNvbiBsdWNpZGUtYmFyY29kZSI+PHBhdGggZD0iTTMgNXYxNCIvPjxwYXRoIGQ9Ik04IDV2MTQiLz48cGF0aCBkPSJNMTIgNXYxNCIvPjxwYXRoIGQ9Ik0xNyA1djE0Ii8+PHBhdGggZD0iTTIxIDV2MTQiLz48L3N2Zz4=")
       no-repeat;
   }
 </style>
