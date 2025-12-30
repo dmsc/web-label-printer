@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { onMount } from "svelte";
+  import { onMount, settled, tick } from "svelte";
+  import Emoji from "./lib/Emoji.svelte";
 
   type CanvasContext =
     | CanvasRenderingContext2D
@@ -25,6 +26,8 @@
   let margin_x = $derived(Math.round(margin_width_mm * 8));
   let margin_y = $derived(Math.round(margin_height_mm * 8));
   let text = $state(sessionStorage.getItem("text") || "");
+  let show_emoji = $state(false);
+  let textarea: HTMLTextAreaElement | undefined = $state();
 
   // Save to localStorage
   $effect(() => {
@@ -399,12 +402,74 @@
       console.log(`Error printing: ${err}`);
     }
   }
+
+  async function insertText(str: string) {
+    if (!textarea) return;
+    const pos0 = textarea.selectionStart ?? 0;
+    const pos1 = textarea.selectionEnd ?? 0;
+    text = text.substring(0, pos1) + str + text.substring(pos1);
+    await settled();
+    textarea.setSelectionRange(pos0, pos1 + str.length);
+    textarea.focus();
+  }
+
+  async function setAttribute(attr: string) {
+    if (!textarea) return;
+    let pos0 = textarea.selectionStart ?? 0;
+    let pos1 = textarea.selectionEnd ?? 0;
+    const sel = text.substring(pos0, pos1);
+
+    // Check if selection already has attribute
+    if (sel.startsWith(attr) && sel.endsWith(attr)) {
+      text =
+        text.substring(0, pos0) +
+        sel.substring(1, sel.length - 1) +
+        text.substring(pos1);
+      pos1 = pos1 - 2 * attr.length;
+    } else {
+      text = text.substring(0, pos0) + attr + sel + attr + text.substring(pos1);
+      pos1 = pos1 + 2 * attr.length;
+    }
+    await settled();
+    textarea.setSelectionRange(pos0, pos1);
+    textarea.focus();
+  }
 </script>
 
 <main>
   <h1>Web Label Printer</h1>
   <div class="r">
-    <textarea bind:value={text} placeholder="Write text here..."></textarea>
+    <div class="bar">
+      <button
+        onclick={() => setAttribute("*")}
+        class="bold"
+        aria-label="Bold Text"
+      >
+      </button>
+      <button
+        onclick={() => setAttribute("_")}
+        class="italic"
+        aria-label="Italic Text"
+      >
+      </button>
+      <button
+        class="smile"
+        aria-pressed={show_emoji}
+        aria-label="Show Emoji Selector"
+        onclick={() => {
+          show_emoji = !show_emoji;
+        }}
+      >
+      </button>
+    </div>
+    {#if show_emoji}
+      <Emoji onselect={insertText} />
+    {/if}
+    <textarea
+      bind:this={textarea}
+      bind:value={text}
+      placeholder="Write text here..."
+    ></textarea>
     <details>
       <summary>⚙️ Configuration</summary>
       <div class="config">
@@ -474,6 +539,14 @@
     line-height: 1.1;
     border-bottom: 1px solid #444;
   }
+  div.bar {
+    display: flex;
+    flex-direction: row;
+    align-items: stretch;
+    justify-content: start;
+    column-gap: 8px;
+    width: 100%;
+  }
   div.r {
     display: flex;
     flex-direction: column;
@@ -529,6 +602,7 @@
     cursor: pointer;
     transition: background-color 0.25s ease-in-out;
   }
+  .bar button:hover,
   button:hover {
     background-color: #ccc;
   }
@@ -557,5 +631,25 @@
     border: 1px solid #ccc;
     border-radius: 6px;
     text-align: center;
+  }
+  .bar button {
+    padding: 16px;
+    background-position-x: center;
+    background-position-y: center;
+    background-color: #ddd;
+    max-width: 28px;
+    border-radius: 6px;
+  }
+  .italic {
+    background: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWl0YWxpYy1pY29uIGx1Y2lkZS1pdGFsaWMiPjxsaW5lIHgxPSIxOSIgeDI9IjEwIiB5MT0iNCIgeTI9IjQiLz48bGluZSB4MT0iMTQiIHgyPSI1IiB5MT0iMjAiIHkyPSIyMCIvPjxsaW5lIHgxPSIxNSIgeDI9IjkiIHkxPSI0IiB5Mj0iMjAiLz48L3N2Zz4=")
+      no-repeat;
+  }
+  .bold {
+    background: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLWJvbGQtaWNvbiBsdWNpZGUtYm9sZCI+PHBhdGggZD0iTTYgMTJoOWE0IDQgMCAwIDEgMCA4SDdhMSAxIDAgMCAxLTEtMVY1YTEgMSAwIDAgMSAxLTFoN2E0IDQgMCAwIDEgMCA4Ii8+PC9zdmc+")
+      no-repeat;
+  }
+  .smile {
+    background: url("data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9ImN1cnJlbnRDb2xvciIgc3Ryb2tlLXdpZHRoPSIyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiIGNsYXNzPSJsdWNpZGUgbHVjaWRlLXNtaWxlLWljb24gbHVjaWRlLXNtaWxlIj48Y2lyY2xlIGN4PSIxMiIgY3k9IjEyIiByPSIxMCIvPjxwYXRoIGQ9Ik04IDE0czEuNSAyIDQgMiA0LTIgNC0yIi8+PGxpbmUgeDE9IjkiIHgyPSI5LjAxIiB5MT0iOSIgeTI9IjkiLz48bGluZSB4MT0iMTUiIHgyPSIxNS4wMSIgeTE9IjkiIHkyPSI5Ii8+PC9zdmc+")
+      no-repeat;
   }
 </style>
