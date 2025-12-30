@@ -121,11 +121,11 @@
           pos = tag.pos + 1;
           break;
         case "big":
-          current_font.size *= 5.0 / 4.0;
+          current_font.size *= 3.0 / 2.0;
           pos = tag.pos + 2;
           break;
         case "small":
-          current_font.size *= 4.0 / 5.0;
+          current_font.size *= 2.0 / 3.0;
           pos = tag.pos + 2;
           break;
         case "bold end":
@@ -137,11 +137,11 @@
           pos = tag.pos + 1;
           break;
         case "big end":
-          current_font.size *= 4.0 / 5.0;
+          current_font.size *= 2.0 / 3.0;
           pos = tag.pos + 2;
           break;
         case "small end":
-          current_font.size *= 5.0 / 4.0;
+          current_font.size *= 3.0 / 2.0;
           pos = tag.pos + 2;
           break;
         case "barcode":
