@@ -133,16 +133,14 @@
         font-size: 1.125rem;
         line-height: 1.75rem;
         border-radius: 0.375rem;
-        color: #374151;
     }
 
     .category-btn:hover {
-        background-color: #e5e7eb;
+        background-color: #dde;
     }
 
     .category-btn.active {
-        background-color: #dbeafe;
-        color: #1d4ed8;
+        background-color: #def;
     }
 
     .grid-container {
@@ -156,12 +154,12 @@
     }
 
     .section p {
-        font-size: 0.75rem;
-        line-height: 1rem;
+        font-size: 0.75em;
+        line-height: 1em;
         font-weight: 500;
-        color: #6b7280;
+        color: #778;
         text-transform: uppercase;
-        margin-bottom: 0.25rem;
+        margin-bottom: 0.25em;
     }
 
     .grid {
@@ -173,15 +171,15 @@
     }
 
     .emoji-btn {
-        width: 2rem;
-        height: 2rem;
-        font-size: 1.125rem;
-        line-height: 1.75rem;
-        border-radius: 0.25rem;
+        width: 2em;
+        height: 2em;
+        font-size: 1.25em;
+        line-height: 1.75em;
+        border-radius: 0.25em;
     }
 
     .emoji-btn:hover {
-        background-color: #e5e7eb;
+        background-color: #dde;
         transform: scale(1.5);
     }
 
