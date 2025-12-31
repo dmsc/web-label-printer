@@ -29,12 +29,24 @@
   let show_emoji = $state(false);
   let textarea: HTMLTextAreaElement | undefined = $state();
 
+  // Font size settings (loaded from localStorage)
+  let auto_font_size = $state(
+    localStorage.getItem("auto_font_size") !== "false",
+  );
+  let font_size = $state(parseFloat(localStorage.getItem("font_size") || "48"));
+
   // Save to localStorage
   $effect(() => {
     localStorage.setItem("label_width_mm", label_width_mm.toString());
     localStorage.setItem("label_height_mm", label_height_mm.toString());
     localStorage.setItem("margin_mm", margin_width_mm.toString());
     localStorage.setItem("margin_height_mm", margin_height_mm.toString());
+  });
+
+  // Save font settings to localStorage
+  $effect(() => {
+    localStorage.setItem("auto_font_size", auto_font_size.toString());
+    localStorage.setItem("font_size", font_size.toString());
   });
 
   // Save text to sessionStorage
@@ -233,7 +245,7 @@
 
     // Draw text lines:
     const lines = text.split("\n");
-    const sz = bestSize(ctx, lines);
+    const sz = auto_font_size ? bestSize(ctx, lines) : font_size;
     const font_sz = fullSize(ctx, lines, sz);
 
     ctx.textBaseline = "alphabetic";
@@ -427,7 +439,8 @@
         text.substring(pos1);
       pos1 = pos1 - attr1.length - attr2.length;
     } else {
-      text = text.substring(0, pos0) + attr1 + sel + attr2 + text.substring(pos1);
+      text =
+        text.substring(0, pos0) + attr1 + sel + attr2 + text.substring(pos1);
       pos1 = pos1 + attr1.length + attr2.length;
     }
     await settled();
@@ -526,6 +539,32 @@
             max="10"
             step="0.1"
           />
+        </label>
+        <label>
+          <input type="checkbox" bind:checked={auto_font_size} />
+          Automatic Font Size
+        </label>
+        <label>
+          Font Size:
+          <input
+            type="range"
+            min="8"
+            max="144"
+            step="1"
+            bind:value={font_size}
+            disabled={auto_font_size}
+            list="markers"
+          />
+          <datalist id="markers">
+            <option value="12"></option>
+            <option value="24"></option>
+            <option value="32"></option>
+            <option value="48"></option>
+            <option value="64"></option>
+            <option value="96"></option>
+            <option value="128"></option>
+          </datalist>
+          <span>{font_size.toFixed(0)}</span>
         </label>
       </div>
     </details>
@@ -649,6 +688,16 @@
     border: 1px solid #ccc;
     border-radius: 6px;
     text-align: center;
+  }
+  .config input[type="checkbox"] {
+    width: auto;
+    margin-right: 0.5em;
+  }
+  .config input[type="range"] {
+    width: calc(100% - 10em);
+  }
+  .config label:has(input[type="checkbox"]) {
+    justify-content: flex-start;
   }
   .bar button {
     padding: 16px;
